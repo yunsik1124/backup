@@ -37,11 +37,11 @@
             display: none !important;
         }
 
-        /* --- 모바일 세로 규격 제한 (수정됨: 반응형 유연성) --- */
+        /* --- 모바일 세로 규격 제한 --- */
         #game-container {
             width: 100%;
             max-width: 480px;
-            height: 100dvh; /* dvh를 사용하여 주소창 등 모바일 UI 변화에 대응 */
+            height: 100dvh;
             position: relative;
             background-color: var(--bg-panel);
             box-shadow: 0 0 40px rgba(0,0,0,0.9);
@@ -50,7 +50,6 @@
             transition: background-color 0.8s ease;
         }
 
-        /* 아래 패딩 조절하여 화면 잘림 방지 */
         .screen {
             padding: 20px 15px 100px 15px;
             display: flex;
@@ -143,6 +142,53 @@
                 transform: scale(1);
                 box-shadow: 0 0 10px rgba(46,213,115,0.5);
             }
+        }
+
+        /* --- 전투 타격 애니메이션 --- */
+        @keyframes clashLeft {
+            0% {
+                transform: translateX(0) scale(1) rotate(0);
+            }
+
+            30% {
+                transform: translateX(-15px) scale(0.95) rotate(-3deg);
+            }
+            /* 장전 (뒤로 빼기) */
+            70% {
+                transform: translateX(50px) scale(1.1) rotate(12deg);
+            }
+            /* 타격 (앞으로 쾅) */
+            100% {
+                transform: translateX(0) scale(1) rotate(0);
+            }
+        }
+
+        @keyframes clashRight {
+            0% {
+                transform: translateX(0) scale(1) rotate(0);
+            }
+
+            30% {
+                transform: translateX(15px) scale(0.95) rotate(3deg);
+            }
+            /* 장전 */
+            70% {
+                transform: translateX(-50px) scale(1.1) rotate(-12deg);
+            }
+            /* 타격 */
+            100% {
+                transform: translateX(0) scale(1) rotate(0);
+            }
+        }
+
+        .anim-clash-left {
+            animation: clashLeft 0.35s ease-in-out;
+            z-index: 10 !important;
+        }
+
+        .anim-clash-right {
+            animation: clashRight 0.35s ease-in-out;
+            z-index: 10 !important;
         }
 
         /* --- 도감 레이아웃 --- */
@@ -329,6 +375,9 @@
             height: 235px;
             border-width: 3px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+            transition: transform 0.1s;
+            position: relative;
+            z-index: 1;
         }
 
             .combatant-card .card-icon-area {
@@ -340,7 +389,7 @@
         .arena-stage {
             flex-grow: 1;
             flex-shrink: 1;
-            min-height: 250px; /* 짧은 화면 대응 */
+            min-height: 250px;
             width: 100%;
             display: flex;
             flex-direction: column;
@@ -382,6 +431,7 @@
             align-items: center;
             width: 100%;
             justify-content: center;
+            perspective: 1000px;
         }
 
         .vs-text {
@@ -393,9 +443,9 @@
             flex-direction: column;
             align-items: center;
             text-shadow: 0 0 15px rgba(0,0,0,0.9);
+            z-index: 0;
         }
 
-        /* 장소 표시를 위로 올려 UI 간섭 제거 */
         .env-info-center {
             font-size: 1.2em;
             font-weight: 900;
@@ -593,7 +643,7 @@
             bottom: calc(100% + 5px);
         }
 
-        /* 보상 화면 */
+        /* 보상 화면 & 모달 생략(유지) */
         .reward-cards {
             display: flex;
             flex-wrap: wrap;
@@ -641,7 +691,6 @@
             border: 3px solid #fff;
         }
 
-        /* 공용 모달 */
         .modal {
             position: fixed;
             top: 0;
@@ -702,7 +751,6 @@
                 padding: 6px;
             }
 
-        /* --- 덱 교환 전용 모달 CSS --- */
         #exchange-new-animal-wrap {
             display: flex;
             justify-content: center;
@@ -735,7 +783,7 @@
 
         <div id="screen-main" class="screen screen-noslot">
             <div style="margin-top: 50px;">
-                <span style="font-size: 1.1em; color: var(--accent); font-weight: 900; letter-spacing: 1px;">생태계 서바이벌 v2.0</span>
+                <span style="font-size: 1.1em; color: var(--accent); font-weight: 900; letter-spacing: 1px;">생태계 서바이벌 v2.1</span>
                 <h1>누가 이겨?</h1>
                 <p><strong style="color:var(--danger)">5번 틀리면 모든 것을 잃고 게임 오버.</strong><br>생존을 위한 궁극의 덱을 구성하세요.</p>
             </div>
@@ -790,7 +838,7 @@
                         <div class="card combatant-card" id="r1-card-left" onclick="guessWinner('left')"></div>
                         <div class="vs-text">
                             <div style="color:#fff; text-shadow:0 0 10px #ff4757;">VS</div>
-                            <button class="btn-draw" onclick="guessWinner('draw')">무승부</button>
+                            <button class="btn-draw" id="btn-r1-draw" onclick="guessWinner('draw')">무승부</button>
                         </div>
                         <div class="card combatant-card" id="r1-card-right" onclick="guessWinner('right')"></div>
                     </div>
@@ -898,6 +946,77 @@
     </div>
 
     <script>
+        // --- 타격음 생성 (Web Audio API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function playHitSound() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            // 묵직한 타격감을 위한 설정
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // --- 충돌 연출 애니메이션 (공통) ---
+        let isAnimating = false; // 연출 중 중복 클릭 방지 플래그
+
+        function playBattleAnimation(leftId, rightId, callback) {
+            const leftCard = document.getElementById(leftId);
+            const rightCard = document.getElementById(rightId);
+            let clashCount = 0;
+            const maxClashes = 3; // 3번 부딪힘
+
+            function clash() {
+                // 클래스 제거로 애니메이션 리셋
+                leftCard.classList.remove('anim-clash-left');
+                rightCard.classList.remove('anim-clash-right');
+
+                // 리플로우 강제 트리거 (애니메이션 재시작을 위해)
+                void leftCard.offsetWidth;
+                void rightCard.offsetWidth;
+
+                // 클래스 추가 및 소리 재생
+                leftCard.classList.add('anim-clash-left');
+                rightCard.classList.add('anim-clash-right');
+                playHitSound();
+
+                clashCount++;
+
+                if (clashCount < maxClashes) {
+                    setTimeout(clash, 350); // 다음 부딪힘 대기 시간
+                } else {
+                    // 마지막 타격 후 1.2초 정도 여운 대기 (총 연출 시간 약 2.2초 소요)
+                    setTimeout(() => {
+                        leftCard.classList.remove('anim-clash-left');
+                        rightCard.classList.remove('anim-clash-right');
+                        callback();
+                    }, 1200);
+                }
+            }
+
+            clash(); // 첫 번째 타격 시작
+        }
+
+
         // --- 1. 환경 세팅 (4개 환경으로 압축) ---
         const ENV_DATA = {
             '바다': { color: 'var(--env-sea)', bgColor: '#0a1b3f', type: 'water', bgImg: './img/sea.jpg' },
@@ -975,8 +1094,8 @@
 
         // DB 맵핑 (서식지 정리 및 비행 유무 추가)
         BASE_DB.forEach(d => {
-            let hStr = d[4].replace(/민물/g, '강물').replace(/늪지대/g, '정글').replace(/평원/g, '사막').replace(/하늘,?/g, '').replace(/,$/,'').replace(/^,/,'');
-            if(!hStr) hStr = '정글';
+            let hStr = d[4].replace(/민물/g, '강물').replace(/늪지대/g, '정글').replace(/평원/g, '사막').replace(/하늘,?/g, '').replace(/,$/, '').replace(/^,/, '');
+            if (!hStr) hStr = '정글';
             let habitats = [...new Set(hStr.split(','))];
             let canFly = FLYING_ANIMALS.includes(d[1]);
 
@@ -994,8 +1113,8 @@
                 let bounds = getPowerBounds(newTier);
                 let newPower = Math.floor(Math.random() * (bounds[1] - bounds[0] + 1)) + bounds[0];
 
-                let hStr = base[4].replace(/민물/g, '강물').replace(/늪지대/g, '정글').replace(/평원/g, '사막').replace(/하늘,?/g, '').replace(/,$/,'').replace(/^,/,'');
-                if(!hStr) hStr = '정글';
+                let hStr = base[4].replace(/민물/g, '강물').replace(/늪지대/g, '정글').replace(/평원/g, '사막').replace(/하늘,?/g, '').replace(/,$/, '').replace(/^,/, '');
+                if (!hStr) hStr = '정글';
                 let habitats = [...new Set(hStr.split(','))];
                 let canFly = FLYING_ANIMALS.includes(base[1]);
 
@@ -1081,7 +1200,7 @@
         let r2WinningCards = [];
         let selectedR2Slot = null;
 
-        let pendingRewardAnimal = null; // R1에서 가득 찼을 때 대기하는 생물
+        let pendingRewardAnimal = null;
 
         let r1Stage = 1, r1Fails = 0;
         let r2Stage = 1, r2Wins = 0, r2Fails = 0;
@@ -1110,16 +1229,16 @@
 
         function createCardHTML(animal) {
             return `
-                    <div class="card-icon-area">${animal.icon}</div>
-                    <div class="card-info-box">
-                        <div class="card-name">${animal.name}</div>
-                        <div class="card-stats">
-                            <span class="t-${animal.tier}">[${TIER_NAMES[animal.tier]} 등급]</span> <span style="color:#fff; font-weight:bold;">💪${animal.power}</span><br>
-                            지형: <span class="stat-habitat">${animal.habitats.join(', ')}</span><br>
-                            ${animal.type === 'water' ? '수생' : animal.type === 'land' ? '육상' : animal.type === 'air' ? '공중' : '수륙양용'}${animal.canSwim ? ' (수영O)' : ''}${animal.canFly ? ' (비행O)' : ''}
+                        <div class="card-icon-area">${animal.icon}</div>
+                        <div class="card-info-box">
+                            <div class="card-name">${animal.name}</div>
+                            <div class="card-stats">
+                                <span class="t-${animal.tier}">[${TIER_NAMES[animal.tier]} 등급]</span> <span style="color:#fff; font-weight:bold;">💪${animal.power}</span><br>
+                                지형: <span class="stat-habitat">${animal.habitats.join(', ')}</span><br>
+                                ${animal.type === 'water' ? '수생' : animal.type === 'land' ? '육상' : animal.type === 'air' ? '공중' : '수륙양용'}${animal.canSwim ? ' (수영O)' : ''}${animal.canFly ? ' (비행O)' : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
         }
 
         function showModal(title, titleColor, htmlDesc, btnText, mode) {
@@ -1174,19 +1293,19 @@
                     if (count > 0) {
                         slot.classList.add('filled');
                         slot.innerHTML = `
-                                <div class="col-badge">x${count}</div>
-                                <div class="col-tier t-${animal.tier}">${TIER_NAMES[animal.tier]}</div>
-                                <div class="col-icon">${animal.icon}</div>
-                                <div class="col-name">${animal.name}</div>
-                            `;
+                                    <div class="col-badge">x${count}</div>
+                                    <div class="col-tier t-${animal.tier}">${TIER_NAMES[animal.tier]}</div>
+                                    <div class="col-icon">${animal.icon}</div>
+                                    <div class="col-name">${animal.name}</div>
+                                `;
                     } else if (isUnlocked) {
                         slot.classList.add('filled', 'dimmed');
                         slot.innerHTML = `
-                                <div class="col-badge" style="background:#444;">x0</div>
-                                <div class="col-tier t-${animal.tier}" style="color:#aaa; text-shadow:none;">${TIER_NAMES[animal.tier]}</div>
-                                <div class="col-icon">${animal.icon}</div>
-                                <div class="col-name" style="color:#aaa;">${animal.name}</div>
-                            `;
+                                    <div class="col-badge" style="background:#444;">x0</div>
+                                    <div class="col-tier t-${animal.tier}" style="color:#aaa; text-shadow:none;">${TIER_NAMES[animal.tier]}</div>
+                                    <div class="col-icon">${animal.icon}</div>
+                                    <div class="col-name" style="color:#aaa;">${animal.name}</div>
+                                `;
                     }
                     slot.title = `[${TIER_NAMES[animal.tier]}] ${animal.name} (전투력: ${animal.power})`;
                     grid.appendChild(slot);
@@ -1314,27 +1433,59 @@
         }
 
         function guessWinner(choice) {
-            const isCorrect = choice === currentFight.winnerChoice;
-            let title, color, btnText, mode;
-            let htmlDesc = "";
+            if (isAnimating) return; // 중복 방지
+            isAnimating = true;
+            document.body.style.pointerEvents = 'none'; // 전체 클릭 방지
 
-            if (currentFight.specialData.isSpecial) {
-                htmlDesc += `<div class="special-win-box">${currentFight.specialData.desc}</div>`;
-            } else {
-                htmlDesc += `<div class="analysis-box"><strong>[전투 상세 분석] - 장소: ${currentEnv}</strong><br><br>`;
-                htmlDesc += `<span style="color:var(--accent)">${currentFight.left.name}</span>: 최종 전투력 <strong>${currentFight.resA.finalPower}</strong><br><span style="font-size:0.9em;color:#aaa">- ${currentFight.resA.note}</span><br><br>`;
-                htmlDesc += `<span style="color:var(--accent)">${currentFight.right.name}</span>: 최종 전투력 <strong>${currentFight.resB.finalPower}</strong><br><span style="font-size:0.9em;color:#aaa">- ${currentFight.resB.note}</span></div>`;
-            }
+            // 애니메이션 시작
+            playBattleAnimation('r1-card-left', 'r1-card-right', () => {
+                isAnimating = false;
+                document.body.style.pointerEvents = 'auto'; // 클릭 허용 복구
 
-            if (isCorrect) {
-                title = '정답!'; color = 'var(--success)';
-                let wonAnimal = currentFight.winnerChoice === 'draw' ?
-                    (Math.random() > 0.5 ? currentFight.left : currentFight.right) :
-                    currentFight.winnerAnimal;
+                // 기존 판정 로직
+                const isCorrect = choice === currentFight.winnerChoice;
+                let title, color, btnText, mode;
+                let htmlDesc = "";
 
-                if (currentRunSlots.length < 10) {
-                    currentRunSlots.push(wonAnimal);
-                    htmlDesc += `<strong style="color:var(--success)">정확한 예측!<br>임시 보상으로 [${wonAnimal.name}] 덱 획득!</strong>`;
+                if (currentFight.specialData.isSpecial) {
+                    htmlDesc += `<div class="special-win-box">${currentFight.specialData.desc}</div>`;
+                } else {
+                    htmlDesc += `<div class="analysis-box"><strong>[전투 상세 분석] - 장소: ${currentEnv}</strong><br><br>`;
+                    htmlDesc += `<span style="color:var(--accent)">${currentFight.left.name}</span>: 최종 전투력 <strong>${currentFight.resA.finalPower}</strong><br><span style="font-size:0.9em;color:#aaa">- ${currentFight.resA.note}</span><br><br>`;
+                    htmlDesc += `<span style="color:var(--accent)">${currentFight.right.name}</span>: 최종 전투력 <strong>${currentFight.resB.finalPower}</strong><br><span style="font-size:0.9em;color:#aaa">- ${currentFight.resB.note}</span></div>`;
+                }
+
+                if (isCorrect) {
+                    title = '정답!'; color = 'var(--success)';
+                    let wonAnimal = currentFight.winnerChoice === 'draw' ?
+                        (Math.random() > 0.5 ? currentFight.left : currentFight.right) :
+                        currentFight.winnerAnimal;
+
+                    if (currentRunSlots.length < 10) {
+                        currentRunSlots.push(wonAnimal);
+                        htmlDesc += `<strong style="color:var(--success)">정확한 예측!<br>임시 보상으로 [${wonAnimal.name}] 덱 획득!</strong>`;
+
+                        if (r1Stage >= 10) {
+                            btnText = '2라운드 안내'; mode = 'to_r2_intro';
+                            htmlDesc += `<br><br><strong>1라운드 생존! 모은 덱으로 2라운드에 돌입합니다.</strong>`;
+                        } else {
+                            btnText = '다음 스테이지'; mode = 'next_r1';
+                        }
+                        showModal(title, color, htmlDesc, btnText, mode);
+                    } else {
+                        pendingRewardAnimal = wonAnimal;
+                        htmlDesc += `<strong style="color:var(--accent)">[${wonAnimal.name}] 영입 대기 중!</strong><br><span style="color:#aaa">임시 덱(10개)이 가득 차서 교환이 필요합니다.</span>`;
+                        showModal(title, color, htmlDesc, '교환 화면으로', 'pending_exchange');
+                    }
+                } else {
+                    title = '오답!'; color = 'var(--danger)';
+                    r1Fails++;
+                    if (currentFight.winnerChoice === 'draw') htmlDesc += `<strong style="color:var(--danger)"><br>이 전투는 무승부였습니다! 예측 실패.</strong>`;
+
+                    if (r1Fails >= 5) {
+                        triggerGameOver("5번의 오답으로 생존에 실패했습니다.");
+                        return;
+                    }
 
                     if (r1Stage >= 10) {
                         btnText = '2라운드 안내'; mode = 'to_r2_intro';
@@ -1342,31 +1493,10 @@
                     } else {
                         btnText = '다음 스테이지'; mode = 'next_r1';
                     }
+
                     showModal(title, color, htmlDesc, btnText, mode);
-                } else {
-                    pendingRewardAnimal = wonAnimal;
-                    htmlDesc += `<strong style="color:var(--accent)">[${wonAnimal.name}] 영입 대기 중!</strong><br><span style="color:#aaa">임시 덱(10개)이 가득 차서 교환이 필요합니다.</span>`;
-                    showModal(title, color, htmlDesc, '교환 화면으로', 'pending_exchange');
                 }
-            } else {
-                title = '오답!'; color = 'var(--danger)';
-                r1Fails++;
-                if (currentFight.winnerChoice === 'draw') htmlDesc += `<strong style="color:var(--danger)"><br>이 전투는 무승부였습니다! 예측 실패.</strong>`;
-
-                if (r1Fails >= 5) {
-                    triggerGameOver("5번의 오답으로 생존에 실패했습니다.");
-                    return;
-                }
-
-                if (r1Stage >= 10) {
-                    btnText = '2라운드 안내'; mode = 'to_r2_intro';
-                    htmlDesc += `<br><br><strong>1라운드 생존! 모은 덱으로 2라운드에 돌입합니다.</strong>`;
-                } else {
-                    btnText = '다음 스테이지'; mode = 'next_r1';
-                }
-
-                showModal(title, color, htmlDesc, btnText, mode);
-            }
+            });
         }
 
         // --- 교환 시스템 ---
@@ -1437,10 +1567,10 @@
                     slotEl.className = "slot filled" + (isUsed ? " used" : "") + (isSelected ? " selected" : "");
 
                     let tooltipHTML = `<div class="tooltip-content">
-                                <strong class="t-${animal.tier}">[${TIER_NAMES[animal.tier]}] ${animal.name}</strong><br>
-                                전투력: ${animal.power} | 유리: ${animal.habitats.join(',')}<br>
-                                타입: ${animal.type === 'water' ? '수생' : animal.type === 'land' ? '육상' : animal.type === 'air' ? '공중' : '수륙양용'}
-                            </div>`;
+                                    <strong class="t-${animal.tier}">[${TIER_NAMES[animal.tier]}] ${animal.name}</strong><br>
+                                    전투력: ${animal.power} | 유리: ${animal.habitats.join(',')}<br>
+                                    타입: ${animal.type === 'water' ? '수생' : animal.type === 'land' ? '육상' : animal.type === 'air' ? '공중' : '수륙양용'}
+                                </div>`;
 
                     slotEl.innerHTML = `<div class="slot-box">${animal.icon}</div><div class="slot-name">${animal.name}</div>${tooltipHTML}`;
 
@@ -1505,69 +1635,78 @@
         }
 
         function confirmR2Card() {
-            if (selectedR2Slot === null) return;
+            if (selectedR2Slot === null || isAnimating) return; // 중복 클릭 방지
+            isAnimating = true;
             document.getElementById('btn-r2-confirm').classList.add('hidden');
+            document.body.style.pointerEvents = 'none';
 
             const playerAnimal = currentRunSlots[selectedR2Slot];
             r2UsedSlots.push(selectedR2Slot);
             selectedR2Slot = null;
             renderR2Slots();
 
-            const specialCheck = checkSpecialVictory(playerAnimal, r2EnemyData, currentEnv);
-            let htmlDesc = "";
-            let isWin = false; let isDraw = false;
+            // 애니메이션 시작
+            playBattleAnimation('r2-card-left', 'r2-card-right', () => {
+                isAnimating = false;
+                document.body.style.pointerEvents = 'auto';
 
-            if (specialCheck.isSpecial) {
-                htmlDesc += `<div class="special-win-box">${specialCheck.desc}</div>`;
-                if (specialCheck.winner === 'draw') isDraw = true;
-                else isWin = specialCheck.winner.id === playerAnimal.id;
-            } else {
-                const pRes = calculateEffectivePower(playerAnimal, currentEnv);
-                const eRes = calculateEffectivePower(r2EnemyData, currentEnv);
-                htmlDesc += `<div class="analysis-box"><strong>[결과 요약] - 장소: ${currentEnv}</strong><br><br>`;
-                htmlDesc += `내 덱 [${playerAnimal.name}]: 최종 <strong>${pRes.finalPower}</strong><br><span style="font-size:0.8em;color:#aaa">- ${pRes.note}</span><br><br>`;
-                htmlDesc += `적 덱 [${r2EnemyData.name}]: 최종 <strong>${eRes.finalPower}</strong><br><span style="font-size:0.8em;color:#aaa">- ${eRes.note}</span></div>`;
+                // 기존 판정 로직
+                const specialCheck = checkSpecialVictory(playerAnimal, r2EnemyData, currentEnv);
+                let htmlDesc = "";
+                let isWin = false; let isDraw = false;
 
-                if (pRes.finalPower === eRes.finalPower) isDraw = true;
-                else isWin = pRes.finalPower > eRes.finalPower;
-            }
-
-            let title, color;
-            if (isDraw) {
-                title = '무승부!'; color = 'var(--accent)'; r2Fails++;
-                htmlDesc += `<strong style="color:var(--accent)">승부를 가리지 못했습니다. (패배 허용 -1)</strong>`;
-            } else if (isWin) {
-                title = '전투 승리!'; color = 'var(--success)';
-                r2Wins++;
-                r2WinningCards.push(playerAnimal);
-                htmlDesc += `<strong style="color:var(--success)">상대를 제압했습니다! (승수 +1)</strong>`;
-            } else {
-                title = '전투 패배...'; color = 'var(--danger)'; r2Fails++;
-                htmlDesc += `<strong style="color:var(--danger)">패배했습니다. (패배 허용 -1)</strong>`;
-            }
-
-            if (r2Fails >= 5) {
-                triggerGameOver("5번의 전투 실패로 생존에 실패했습니다.");
-                return;
-            }
-
-            let mode, btnText;
-            if (r2Stage >= 10) {
-                if (r2Wins >= 5) {
-                    mode = 'end_win'; btnText = '최종 보상 받기';
-                    htmlDesc += `<br><br><strong style="font-size:1.3em; color:var(--accent); text-shadow:0 0 10px rgba(255,165,2,0.5);">🎉 10스테이지 종료! ${r2Wins}승으로 생존 성공!</strong>`;
+                if (specialCheck.isSpecial) {
+                    htmlDesc += `<div class="special-win-box">${specialCheck.desc}</div>`;
+                    if (specialCheck.winner === 'draw') isDraw = true;
+                    else isWin = specialCheck.winner.id === playerAnimal.id;
                 } else {
-                    triggerGameOver(`10스테이지 종료. ${r2Wins}승으로 5승 달성에 실패했습니다.`);
+                    const pRes = calculateEffectivePower(playerAnimal, currentEnv);
+                    const eRes = calculateEffectivePower(r2EnemyData, currentEnv);
+                    htmlDesc += `<div class="analysis-box"><strong>[결과 요약] - 장소: ${currentEnv}</strong><br><br>`;
+                    htmlDesc += `내 덱 [${playerAnimal.name}]: 최종 <strong>${pRes.finalPower}</strong><br><span style="font-size:0.8em;color:#aaa">- ${pRes.note}</span><br><br>`;
+                    htmlDesc += `적 덱 [${r2EnemyData.name}]: 최종 <strong>${eRes.finalPower}</strong><br><span style="font-size:0.8em;color:#aaa">- ${eRes.note}</span></div>`;
+
+                    if (pRes.finalPower === eRes.finalPower) isDraw = true;
+                    else isWin = pRes.finalPower > eRes.finalPower;
+                }
+
+                let title, color;
+                if (isDraw) {
+                    title = '무승부!'; color = 'var(--accent)'; r2Fails++;
+                    htmlDesc += `<strong style="color:var(--accent)">승부를 가리지 못했습니다. (패배 허용 -1)</strong>`;
+                } else if (isWin) {
+                    title = '전투 승리!'; color = 'var(--success)';
+                    r2Wins++;
+                    r2WinningCards.push(playerAnimal);
+                    htmlDesc += `<strong style="color:var(--success)">상대를 제압했습니다! (승수 +1)</strong>`;
+                } else {
+                    title = '전투 패배...'; color = 'var(--danger)'; r2Fails++;
+                    htmlDesc += `<strong style="color:var(--danger)">패배했습니다. (패배 허용 -1)</strong>`;
+                }
+
+                if (r2Fails >= 5) {
+                    triggerGameOver("5번의 전투 실패로 생존에 실패했습니다.");
                     return;
                 }
-            } else {
-                mode = 'next_r2'; btnText = '다음 스테이지';
-            }
 
-            showModal(title, color, htmlDesc, btnText, mode);
+                let mode, btnText;
+                if (r2Stage >= 10) {
+                    if (r2Wins >= 5) {
+                        mode = 'end_win'; btnText = '최종 보상 받기';
+                        htmlDesc += `<br><br><strong style="font-size:1.3em; color:var(--accent); text-shadow:0 0 10px rgba(255,165,2,0.5);">🎉 10스테이지 종료! ${r2Wins}승으로 생존 성공!</strong>`;
+                    } else {
+                        triggerGameOver(`10스테이지 종료. ${r2Wins}승으로 5승 달성에 실패했습니다.`);
+                        return;
+                    }
+                } else {
+                    mode = 'next_r2'; btnText = '다음 스테이지';
+                }
+
+                showModal(title, color, htmlDesc, btnText, mode);
+            });
         }
 
-        // --- 7. 최종 보상 (승리한 카드로 뽑기 기능 구현 완료) ---
+        // --- 7. 최종 보상 ---
         function showRewardScreen() {
             document.getElementById('game-container').style.backgroundColor = 'var(--bg-panel)';
             showScreen('screen-reward');
@@ -1587,12 +1726,12 @@
                 const cardWrap = document.createElement('div');
                 cardWrap.className = 'reward-card';
                 cardWrap.innerHTML = `
-                            <div class="reward-card-front"></div>
-                            <div class="reward-card-back">
-                                ${animal.icon}<br>
-                                <div style="background:rgba(0,0,0,0.8); padding:8px; color:#fff; font-weight:bold; font-size:0.25em; width:100%; box-sizing:border-box;">${animal.name}</div>
-                            </div>
-                        `;
+                                <div class="reward-card-front"></div>
+                                <div class="reward-card-back">
+                                    ${animal.icon}<br>
+                                    <div style="background:rgba(0,0,0,0.8); padding:8px; color:#fff; font-weight:bold; font-size:0.25em; width:100%; box-sizing:border-box;">${animal.name}</div>
+                                </div>
+                            `;
                 cardWrap.onclick = () => {
                     if (isPicked) return;
                     isPicked = true;
