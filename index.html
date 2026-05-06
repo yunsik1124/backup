@@ -146,39 +146,17 @@
 
         /* --- 전투 타격 애니메이션 --- */
         @keyframes clashLeft {
-            0% {
-                transform: translateX(0) scale(1) rotate(0);
-            }
-
-            30% {
-                transform: translateX(-15px) scale(0.95) rotate(-3deg);
-            }
-            /* 장전 (뒤로 빼기) */
-            70% {
-                transform: translateX(50px) scale(1.1) rotate(12deg);
-            }
-            /* 타격 (앞으로 쾅) */
-            100% {
-                transform: translateX(0) scale(1) rotate(0);
-            }
+            0% { transform: translateX(0) scale(1) rotate(0); }
+            30% { transform: translateX(-15px) scale(0.95) rotate(-3deg); }
+            70% { transform: translateX(50px) scale(1.1) rotate(12deg); }
+            100% { transform: translateX(0) scale(1) rotate(0); }
         }
 
         @keyframes clashRight {
-            0% {
-                transform: translateX(0) scale(1) rotate(0);
-            }
-
-            30% {
-                transform: translateX(15px) scale(0.95) rotate(3deg);
-            }
-            /* 장전 */
-            70% {
-                transform: translateX(-50px) scale(1.1) rotate(-12deg);
-            }
-            /* 타격 */
-            100% {
-                transform: translateX(0) scale(1) rotate(0);
-            }
+            0% { transform: translateX(0) scale(1) rotate(0); }
+            30% { transform: translateX(15px) scale(0.95) rotate(3deg); }
+            70% { transform: translateX(-50px) scale(1.1) rotate(-12deg); }
+            100% { transform: translateX(0) scale(1) rotate(0); }
         }
 
         .anim-clash-left {
@@ -460,50 +438,15 @@
         }
 
         /* 티어 스타일 */
-        .t-9 {
-            color: #ff0000;
-            font-weight: 900;
-            text-shadow: 0 0 10px #ff0000, 0 0 15px #ffd700;
-            letter-spacing: 1px;
-        }
-
-        .t-8 {
-            color: #ff5252;
-            font-weight: 900;
-        }
-
-        .t-7 {
-            color: #ffb142;
-            font-weight: 900;
-        }
-
-        .t-6 {
-            color: #706fd3;
-            font-weight: 900;
-        }
-
-        .t-5 {
-            color: #34ace0;
-            font-weight: bold;
-        }
-
-        .t-4 {
-            color: #33d9b2;
-            font-weight: bold;
-        }
-
-        .t-3 {
-            color: #f7f1e3;
-            font-weight: bold;
-        }
-
-        .t-2 {
-            color: #d1ccc0;
-        }
-
-        .t-1 {
-            color: #84817a;
-        }
+        .t-9 { color: #ff0000; font-weight: 900; text-shadow: 0 0 10px #ff0000, 0 0 15px #ffd700; letter-spacing: 1px; }
+        .t-8 { color: #ff5252; font-weight: 900; }
+        .t-7 { color: #ffb142; font-weight: 900; }
+        .t-6 { color: #706fd3; font-weight: 900; }
+        .t-5 { color: #34ace0; font-weight: bold; }
+        .t-4 { color: #33d9b2; font-weight: bold; }
+        .t-3 { color: #f7f1e3; font-weight: bold; }
+        .t-2 { color: #d1ccc0; }
+        .t-1 { color: #84817a; }
 
         .arena-header {
             width: 100%;
@@ -643,7 +586,6 @@
             bottom: calc(100% + 5px);
         }
 
-        /* 보상 화면 & 모달 생략(유지) */
         .reward-cards {
             display: flex;
             flex-wrap: wrap;
@@ -783,7 +725,7 @@
 
         <div id="screen-main" class="screen screen-noslot">
             <div style="margin-top: 50px;">
-                <span style="font-size: 1.1em; color: var(--accent); font-weight: 900; letter-spacing: 1px;">생태계 서바이벌 v2.1</span>
+                <span style="font-size: 1.1em; color: var(--accent); font-weight: 900; letter-spacing: 1px;">생태계 서바이벌 v2.2</span>
                 <h1>누가 이겨?</h1>
                 <p><strong style="color:var(--danger)">5번 틀리면 모든 것을 잃고 게임 오버.</strong><br>생존을 위한 궁극의 덱을 구성하세요.</p>
             </div>
@@ -961,7 +903,6 @@
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
 
-            // 묵직한 타격감을 위한 설정
             osc.type = 'square';
             osc.frequency.setValueAtTime(150, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
@@ -977,24 +918,21 @@
         }
 
         // --- 충돌 연출 애니메이션 (공통) ---
-        let isAnimating = false; // 연출 중 중복 클릭 방지 플래그
+        let isAnimating = false;
 
         function playBattleAnimation(leftId, rightId, callback) {
             const leftCard = document.getElementById(leftId);
             const rightCard = document.getElementById(rightId);
             let clashCount = 0;
-            const maxClashes = 3; // 3번 부딪힘
+            const maxClashes = 3;
 
             function clash() {
-                // 클래스 제거로 애니메이션 리셋
                 leftCard.classList.remove('anim-clash-left');
                 rightCard.classList.remove('anim-clash-right');
 
-                // 리플로우 강제 트리거 (애니메이션 재시작을 위해)
                 void leftCard.offsetWidth;
                 void rightCard.offsetWidth;
 
-                // 클래스 추가 및 소리 재생
                 leftCard.classList.add('anim-clash-left');
                 rightCard.classList.add('anim-clash-right');
                 playHitSound();
@@ -1002,9 +940,8 @@
                 clashCount++;
 
                 if (clashCount < maxClashes) {
-                    setTimeout(clash, 350); // 다음 부딪힘 대기 시간
+                    setTimeout(clash, 350);
                 } else {
-                    // 마지막 타격 후 1.2초 정도 여운 대기 (총 연출 시간 약 2.2초 소요)
                     setTimeout(() => {
                         leftCard.classList.remove('anim-clash-left');
                         rightCard.classList.remove('anim-clash-right');
@@ -1013,11 +950,11 @@
                 }
             }
 
-            clash(); // 첫 번째 타격 시작
+            clash();
         }
 
 
-        // --- 1. 환경 세팅 (4개 환경으로 압축) ---
+        // --- 1. 환경 세팅 ---
         const ENV_DATA = {
             '바다': { color: 'var(--env-sea)', bgColor: '#0a1b3f', type: 'water', bgImg: './img/sea.jpg' },
             '강물': { color: 'var(--env-freshwater)', bgColor: '#1c3b5e', type: 'water', bgImg: './img/river.jpg' },
@@ -1092,7 +1029,7 @@
         let ANIMAL_DB = [];
         let idCounter = 1;
 
-        // DB 맵핑 (서식지 정리 및 비행 유무 추가)
+        // DB 맵핑
         BASE_DB.forEach(d => {
             let hStr = d[4].replace(/민물/g, '강물').replace(/늪지대/g, '정글').replace(/평원/g, '사막').replace(/하늘,?/g, '').replace(/,$/, '').replace(/^,/, '');
             if (!hStr) hStr = '정글';
@@ -1122,14 +1059,22 @@
             }
         }
 
-        // --- 3. 전투 및 특수 승리 로직 ---
+        // --- 3. 전투 및 특수 승리 로직 (수정된 익사 로직 적용) ---
         function checkSpecialVictory(animalA, animalB, envName) {
             if (animalA.id === animalB.id) return { isSpecial: true, winner: 'draw', desc: `동족 상잔! 치열한 영역 다툼 끝에 승부를 가리지 못했습니다.` };
 
-            let aDrowns = (envName === '바다' || envName === '강물') && animalA.type !== 'water' && !animalA.canSwim && !animalA.canFly;
-            let bDrowns = (envName === '바다' || envName === '강물') && animalB.type !== 'water' && !animalB.canSwim && !animalB.canFly;
+            // 바다 익사: 수영/비행 못하면 체급 무관 즉사
+            let aDrownsOcean = envName === '바다' && animalA.type !== 'water' && !animalA.canSwim && !animalA.canFly;
+            let bDrownsOcean = envName === '바다' && animalB.type !== 'water' && !animalB.canSwim && !animalB.canFly;
 
-            if (aDrowns && bDrowns) return { isSpecial: true, winner: 'draw', desc: `✨[동반 익사]✨<br>${envName}에 빠진 두 육상 생물이 허우적대다 모두 가라앉았습니다.` };
+            // 강물 익사: 수영/비행 못하는 '소형(티어 3 이하)' 개체만 급류에 휩쓸려 즉사 (대형은 버팀)
+            let aDrownsRiver = envName === '강물' && animalA.type !== 'water' && !animalA.canSwim && !animalA.canFly && animalA.tier <= 3;
+            let bDrownsRiver = envName === '강물' && animalB.type !== 'water' && !animalB.canSwim && !animalB.canFly && animalB.tier <= 3;
+
+            let aDrowns = aDrownsOcean || aDrownsRiver;
+            let bDrowns = bDrownsOcean || bDrownsRiver;
+
+            if (aDrowns && bDrowns) return { isSpecial: true, winner: 'draw', desc: `✨[동반 익사]✨<br>${envName}에 빠진 두 비수생 생물이 모두 가라앉았습니다.` };
             if (aDrowns) return { isSpecial: true, winner: animalB, desc: `✨[특수 승리]✨<br>${animalB.name}이(가) ${animalA.name}의 익사를 지켜보며 무혈 승리했습니다!` };
             if (bDrowns) return { isSpecial: true, winner: animalA, desc: `✨[특수 승리]✨<br>${animalA.name}이(가) ${animalB.name}의 익사를 지켜보며 무혈 승리했습니다!` };
 
@@ -1143,6 +1088,7 @@
             return { isSpecial: false };
         }
 
+        // --- 4. 환경별 전투력 계산 (수정된 강물 체급 판정 적용) ---
         function calculateEffectivePower(animal, currentEnvName) {
             let power = animal.power;
             let note = "";
@@ -1164,7 +1110,14 @@
                 } else if (animal.canFly) {
                     power = Math.round(power * 0.9); note = "강물 환경: 공중에서 먹잇감을 노림 (-10%).";
                 } else {
-                    power = Math.round(power * 0.4); note = "강물 환경: 물살에 휩쓸려 전투력 60% 감소.";
+                    // 체급(Tier) 기반 강물 저항력 로직 추가!
+                    if (animal.tier >= 7) {
+                        power = Math.round(power * 0.9); note = "강물 환경: 체급이 거대해 얕은 물은 방해만 됨 (-10%).";
+                    } else if (animal.tier >= 4) {
+                        power = Math.round(power * 0.7); note = "강물 환경: 물살을 거스르며 싸우느라 체력 소모 (-30%).";
+                    } else {
+                        power = Math.round(power * 0.4); note = "강물 환경: 소형 생물이라 물살에 휩쓸림 (-60%).";
+                    }
                 }
             } else if (currentEnvName === '사막') {
                 if (animal.type === 'water') {
@@ -1191,7 +1144,7 @@
             return { finalPower: power, note: note };
         }
 
-        // --- 4. 상태 관리 ---
+        // --- 5. 상태 관리 ---
         let myCollection = JSON.parse(localStorage.getItem('whoWins_collection_v9')) || [];
         let unlockedAnimals = JSON.parse(localStorage.getItem('whoWins_unlocked_v9')) || [];
         let selectedDecks = [];
@@ -1219,7 +1172,7 @@
             saveData();
         }
 
-        // --- 5. UI 컨트롤 ---
+        // --- 6. UI 컨트롤 ---
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
             document.getElementById(screenId).classList.remove('hidden');
@@ -1435,14 +1388,13 @@
         function guessWinner(choice) {
             if (isAnimating) return; // 중복 방지
             isAnimating = true;
-            document.body.style.pointerEvents = 'none'; // 전체 클릭 방지
+            document.body.style.pointerEvents = 'none';
 
             // 애니메이션 시작
             playBattleAnimation('r1-card-left', 'r1-card-right', () => {
                 isAnimating = false;
-                document.body.style.pointerEvents = 'auto'; // 클릭 허용 복구
+                document.body.style.pointerEvents = 'auto';
 
-                // 기존 판정 로직
                 const isCorrect = choice === currentFight.winnerChoice;
                 let title, color, btnText, mode;
                 let htmlDesc = "";
@@ -1609,7 +1561,6 @@
 
             renderR2Slots();
 
-            // 덱 소모 시 예외 승리 처리
             if (currentRunSlots.length - r2UsedSlots.length === 0) {
                 setTimeout(() => {
                     if (r2Wins >= 5) {
@@ -1635,7 +1586,7 @@
         }
 
         function confirmR2Card() {
-            if (selectedR2Slot === null || isAnimating) return; // 중복 클릭 방지
+            if (selectedR2Slot === null || isAnimating) return;
             isAnimating = true;
             document.getElementById('btn-r2-confirm').classList.add('hidden');
             document.body.style.pointerEvents = 'none';
@@ -1645,12 +1596,10 @@
             selectedR2Slot = null;
             renderR2Slots();
 
-            // 애니메이션 시작
             playBattleAnimation('r2-card-left', 'r2-card-right', () => {
                 isAnimating = false;
                 document.body.style.pointerEvents = 'auto';
 
-                // 기존 판정 로직
                 const specialCheck = checkSpecialVictory(playerAnimal, r2EnemyData, currentEnv);
                 let htmlDesc = "";
                 let isWin = false; let isDraw = false;
